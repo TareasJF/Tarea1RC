@@ -16,6 +16,8 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.Headers;
 
+import java.util.*;
+
 public class Server {
 
   public static void main(String[] args) throws Exception {
@@ -23,28 +25,35 @@ public class Server {
     server.createContext("/", new HomeHandler());
     server.createContext("/home_old", new HomeOldHandler());
     server.createContext("/secret", new SecretHandler());
+    server.createContext("/login", new LoginHandler());
     server.setExecutor(null); // creates a default executor
     server.start();
+    // String localIP = server.InetSocketAddress.getLocalHost().toString();
+    // System.out.println(localIP);  
   }
 
   public static void log(String ip,String method, String address) throws IOException {
     Date date = new Date();
     String data = "["+ date.toString() + "]  " +ip + " " + method + " " + address + "\n";
     File file = new File("log.txt");
-        if(!file.exists()) {
-          file.createNewFile();
-        }
-        FileWriter fileWritter = new FileWriter(file.getName(),true);
-          BufferedWriter bufferWritter = new BufferedWriter(fileWritter);
-          bufferWritter.write(data);
-          bufferWritter.close();
+    
+    if(!file.exists()) {
+      file.createNewFile();
+    }
+    
+    FileWriter fileWritter = new FileWriter(file.getName(),true);
+    BufferedWriter bufferWritter = new BufferedWriter(fileWritter);
+    bufferWritter.write(data);
+    bufferWritter.close();
+
+    System.out.println(data);  
  
   }
 
   static class HomeHandler implements HttpHandler {
     public void handle(HttpExchange t) throws IOException {
 
-      log(t.getRemoteAddress().getAddress().toString(), "GET", "/");
+      log(t.getRemoteAddress().toString(), "GET", "/");
 
       Headers h = t.getResponseHeaders();
       h.add("Content-Type","text/html");
@@ -65,7 +74,7 @@ public class Server {
   static class HomeOldHandler implements HttpHandler {
     public void handle(HttpExchange t) throws IOException {
 
-      log(t.getRemoteAddress().getAddress().toString(), "GET", "/home_old");
+      log(t.getRemoteAddress().toString(), "GET", "/home_old");
 
       Headers h = t.getResponseHeaders();
       h.add("Content-Type","text/html");
@@ -86,7 +95,9 @@ public class Server {
   static class SecretHandler implements HttpHandler {
     public void handle(HttpExchange t) throws IOException {
 
-      log(t.getRemoteAddress().getAddress().toString(), "GET", "/secret");
+      // System.out.println(t.getRequestBody());  
+
+      log(t.getRemoteAddress().toString(), "GET", "/secret");
 
       Headers h = t.getResponseHeaders();
       h.add("Content-Type","text/html");
@@ -98,6 +109,27 @@ public class Server {
       bis.read(bytearray, 0, bytearray.length);
 
       t.sendResponseHeaders(403, file.length());
+      OutputStream os = t.getResponseBody();
+      os.write(bytearray,0,bytearray.length);
+      os.close();
+    }
+  }
+
+  static class LoginHandler implements HttpHandler {
+    public void handle(HttpExchange t) throws IOException {
+
+      log(t.getRemoteAddress().toString(), "GET", "/login");
+
+      Headers h = t.getResponseHeaders();
+      h.add("Content-Type","text/html");
+
+      File file = new File ("Html/login.html");
+      byte [] bytearray  = new byte [(int)file.length()];
+      FileInputStream fis = new FileInputStream(file);
+      BufferedInputStream bis = new BufferedInputStream(fis);
+      bis.read(bytearray, 0, bytearray.length);
+
+      t.sendResponseHeaders(200, file.length());
       OutputStream os = t.getResponseBody();
       os.write(bytearray,0,bytearray.length);
       os.close();
