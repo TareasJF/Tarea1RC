@@ -1,28 +1,8 @@
-import java.io.File;
-import java.io.FileWriter;
-import java.io.BufferedWriter;
-
-import java.util.Date;
-
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.Headers;
-
+import java.io.*;
+import java.net.*;
 import java.util.*;
 import java.lang.*;
+import com.sun.net.httpserver.*;
 
 public class Server {
 	public class HomeThread extends Thread{
@@ -59,7 +39,8 @@ public class Server {
 		server.createContext("/", new HomeHandler());
 		server.createContext("/home_old", new HomeOldHandler());
 		server.createContext("/secret", new SecretHandler());
-		server.createContext("/login", new LoginHandler());
+    server.createContext("/login", new LoginHandler());
+		server.createContext("/readme", new AboutHandler());
 
 		//Starting
 		server.setExecutor(null); // creates a default executor
@@ -270,4 +251,25 @@ public class Server {
 			os.close();
 		}
 	}
+
+  static class AboutHandler implements HttpHandler {
+    public void handle(HttpExchange t) throws IOException {
+
+      log(t.getRemoteAddress().toString(), "GET", "/readme");
+
+      Headers h = t.getResponseHeaders();
+      h.add("Content-Type","text/md");
+
+      File file = new File ("README.md");
+      byte [] bytearray  = new byte [(int)file.length()];
+      FileInputStream fis = new FileInputStream(file);
+      BufferedInputStream bis = new BufferedInputStream(fis);
+      bis.read(bytearray, 0, bytearray.length);
+
+      t.sendResponseHeaders(200, file.length());
+      OutputStream os = t.getResponseBody();
+      os.write(bytearray,0,bytearray.length);
+      os.close();
+    }
+  }
 }
