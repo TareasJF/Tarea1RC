@@ -6,10 +6,15 @@ import java.util.Date;
 
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -82,20 +87,48 @@ public class Server {
  
 	}
 
+  public static void cookie(String address) throws IOException {
+    File file = new File("cookies.txt");
+    
+    if(!file.exists()) {
+      file.createNewFile();
+    }
+    
+    FileWriter fileWritter = new FileWriter(file.getName(),true);
+    BufferedWriter bufferWritter = new BufferedWriter(fileWritter);
+    bufferWritter.write(address+"\n");
+    bufferWritter.close();
+  }
+
+  public static Boolean checkCookies(String address) throws IOException {
+    BufferedReader in = new BufferedReader(new FileReader("cookies.txt"));
+    String line;
+    Boolean logged = false;
+    while((line = in.readLine()) != null)
+    {
+        if (line.equals(address)) {
+          logged = true;
+          break;
+        }
+    }
+    in.close();
+    return logged;
+  }
+
 	static class HomeHandler implements HttpHandler {
 		public void handle(HttpExchange t) throws IOException {
 
-			//We create a new thread here, temporarily
-			Thread thrd = new Thread(new Runnable(){
-	        	public void run(){
-	        		try{
-		        		System.out.print("Processing request\n");
+			// //We create a new thread here, temporarily
+			// Thread thrd = new Thread(new Runnable(){
+	  //       	public void run(){
+	  //       		try{
+		 //        		System.out.print("Processing request\n");
 						log(t.getRemoteAddress().toString(), "GET", "/");
 
 						Headers h = t.getResponseHeaders();
-						h.add("Content-Type","image/pdf");
+						h.add("Content-Type","text/html");
 
-						File file = new File ("Html/book.pdf");
+						File file = new File ("Html/home.html");
 						byte [] bytearray  = new byte [(int)file.length()];
 						FileInputStream fis = new FileInputStream(file);
 						BufferedInputStream bis = new BufferedInputStream(fis);
@@ -105,14 +138,14 @@ public class Server {
 						OutputStream os = t.getResponseBody();
 						os.write(bytearray,0,bytearray.length);
 						os.close();
-						System.out.print("Request processed!\n");
-					}
-					catch(Exception e){
+						// System.out.print("Request processed!\n");
+					// }
+					// catch(Exception e){
 
-					}
-	        	}
-	        });
-	        thrd.start();
+					// }
+	    //     	}
+	    //     });
+	    //     thrd.start();
 		}
 	}
 
@@ -140,23 +173,80 @@ public class Server {
 	static class SecretHandler implements HttpHandler {
 		public void handle(HttpExchange t) throws IOException {
 
-			// System.out.println(t.getRequestBody());  
+      BufferedReader br = null;
+      StringBuilder sb = new StringBuilder();
+   
+      String line;
+      try {
+   
+        br = new BufferedReader(new InputStreamReader(t.getRequestBody()));
+        while ((line = br.readLine()) != null) {
+          sb.append(line);
+        }
+   
+      } catch (IOException e) {
+        e.printStackTrace();
+      } finally {
+        if (br != null) {
+          try {
+            br.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+   
+      String body = sb.toString();
 
+      if (body.length() > 0) {
+        log(t.getRemoteAddress().toString(), "POST", "/secret");
+        String[] parts = body.split("&"); 
+        
+        System.out.println(parts[0] + " ||| " + parts[1]);
+
+        if (parts[0].equals("login=root") && parts[1].equals("password=laboratorio1")) {
+          cookie(t.getRemoteAddress().getAddress().toString());
+          Headers h = t.getResponseHeaders();
+          h.add("Content-Type","text/html");
+
+          File file = new File ("Html/secret.html");
+          byte [] bytearray  = new byte [(int)file.length()];
+          FileInputStream fis = new FileInputStream(file);
+          BufferedInputStream bis = new BufferedInputStream(fis);
+          bis.read(bytearray, 0, bytearray.length);
+
+          t.sendResponseHeaders(403, file.length());
+          OutputStream os = t.getResponseBody();
+          os.write(bytearray,0,bytearray.length);
+          os.close();
+          return;
+        }
+      } 
 			log(t.getRemoteAddress().toString(), "GET", "/secret");
 
 			Headers h = t.getResponseHeaders();
 			h.add("Content-Type","text/html");
-
-			File file = new File ("Html/secret403.html");
-			byte [] bytearray  = new byte [(int)file.length()];
-			FileInputStream fis = new FileInputStream(file);
-			BufferedInputStream bis = new BufferedInputStream(fis);
-			bis.read(bytearray, 0, bytearray.length);
-
-			t.sendResponseHeaders(403, file.length());
-			OutputStream os = t.getResponseBody();
-			os.write(bytearray,0,bytearray.length);
-			os.close();
+      if (checkCookies(t.getRemoteAddress().getAddress().toString())) {
+        File file = new File ("Html/secret.html");
+        byte [] bytearray  = new byte [(int)file.length()];
+        FileInputStream fis = new FileInputStream(file);
+        BufferedInputStream bis = new BufferedInputStream(fis);
+        bis.read(bytearray, 0, bytearray.length);
+        t.sendResponseHeaders(200, file.length());
+        OutputStream os = t.getResponseBody();
+        os.write(bytearray,0,bytearray.length);
+        os.close();
+      } else {
+  			File file = new File ("Html/secret403.html");
+  			byte [] bytearray  = new byte [(int)file.length()];
+  			FileInputStream fis = new FileInputStream(file);
+  			BufferedInputStream bis = new BufferedInputStream(fis);
+  			bis.read(bytearray, 0, bytearray.length);
+  			t.sendResponseHeaders(403, file.length());
+  			OutputStream os = t.getResponseBody();
+  			os.write(bytearray,0,bytearray.length);
+  			os.close();
+      }
 		}
 	}
 
