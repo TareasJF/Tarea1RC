@@ -5,8 +5,8 @@
 
 # Compilación:
 
-* ** javac *.java
+* javac *.java
 
 # Ejecución:
 
-* ** java Server
+* java Server
